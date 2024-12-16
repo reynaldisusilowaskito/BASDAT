@@ -212,10 +212,15 @@ class PengadaanController extends Controller
     public function showDetail($id)
     {
         // Mengambil data pengadaan dari tabel pengadaan
-        $pengadaanData = DB::table('pengadaan')->join('vendor', 'pengadaan.vendor_idvendor', '=', 'vendor.idvendor')->join('user', 'pengadaan.user_iduser', '=', 'user.iduser')->where('pengadaan.idpengadaan', $id)->first(); // Ambil data pengadaan pertama (karena hanya satu yang sesuai dengan idpengadaan)
-
-        // Mengambil data detail pengadaan
-        $detailPengadaan = DB::table('detail_pengadaan')->join('barang', 'detail_pengadaan.idbarang', '=', 'barang.idbarang')->join('satuan', 'barang.idsatuan', '=', 'satuan.idsatuan')->where('detail_pengadaan.idpengadaan', $id)->get(); // Ambil semua detail pengadaan yang sesuai dengan idpengadaan
+        $pengadaanData = DB::table('pengadaan')->join('user', 'pengadaan.user_iduser', '=', 'user.iduser')->join('vendor', 'pengadaan.vendor_idvendor', '=', 'vendor.idvendor')->select('pengadaan.*', 'user.username', 'vendor.nama_vendor')->where('pengadaan.idpengadaan', $id)->first();
+        // @dd($pengadaanData);
+        // Mengambil data detail pengadaan, pastikan harga juga dipilih
+        $detailPengadaan = DB::table('detail_pengadaan')
+            ->join('barang', 'detail_pengadaan.idbarang', '=', 'barang.idbarang')
+            ->join('satuan', 'barang.idsatuan', '=', 'satuan.idsatuan')
+            ->select('detail_pengadaan.*', 'barang.nama as nama', 'satuan.nama_satuan', 'barang.harga') // Menambahkan kolom harga
+            ->where('detail_pengadaan.idpengadaan', $id)
+            ->get();
 
         // Cek jika data pengadaan ditemukan
         if (!$pengadaanData) {
@@ -266,7 +271,8 @@ class PengadaanController extends Controller
         // Ambil data yang dikirim dari form
         $idpengadaan = $request->idpengadaan;
         $iduser = $request->iduser;
-        $statusPenerimaan = '1'; // Status penerimaan misalnya '1' untuk diterima
+        $statusPenerimaan = 'A'; // Status penerimaan misalnya '1' untuk diterima
+        $statusPengadaanSelesai = 'B'; // Status pengadaan selesai
         $tanggal = now(); // Mengambil waktu saat ini
 
         try {
@@ -274,10 +280,10 @@ class PengadaanController extends Controller
             DB::beginTransaction();
 
             // Insert data penerimaan baru ke tabel penerimaan
-            $result = DB::insert(
-                'INSERT INTO penerimaan (status, idpengadaan, iduser,created_at)
+            DB::insert(
+                'INSERT INTO penerimaan (status, idpengadaan, iduser, created_at)
              VALUES (?, ?, ?, ?)',
-                [$statusPenerimaan, $idpengadaan, $iduser ,now()],
+                [$statusPenerimaan, $idpengadaan, $iduser, now()],
             );
 
             // Ambil idpenerimaan yang baru dibuat
@@ -301,6 +307,14 @@ class PengadaanController extends Controller
                 );
             }
 
+            // Update status pengadaan menjadi 'B' (selesai)
+            DB::update(
+                'UPDATE pengadaan
+             SET status = ?
+             WHERE idpengadaan = ?',
+                [$statusPengadaanSelesai, $idpengadaan],
+            );
+
             // Commit transaksi jika semua query berhasil
             DB::commit();
 
@@ -308,7 +322,7 @@ class PengadaanController extends Controller
             return response()->json(
                 [
                     'status' => 'success',
-                    'message' => 'Penerimaan berhasil ditambahkan.',
+                    'message' => 'Penerimaan berhasil ditambahkan dan status pengadaan diperbarui.',
                     'idpenerimaan' => $idPenerimaan,
                 ],
                 200,

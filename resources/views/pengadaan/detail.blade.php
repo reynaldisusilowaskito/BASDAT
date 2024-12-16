@@ -9,7 +9,7 @@
                 <!-- Menampilkan ID Pengadaan -->
                 <h3>ID Pengadaan: {{ $pengadaanData->idpengadaan }}</h3>
                 <p><strong>Nama Vendor:</strong> {{ $pengadaanData->nama_vendor }}</p>
-
+           
                 <!-- Menampilkan detail barang -->
                 <h4>Detail Barang:</h4>
                 @if ($detailPengadaan->isNotEmpty())
@@ -41,16 +41,20 @@
             </div>
         </div>
 
-        <!-- Form untuk menerima barang -->
-        <form id="terimaBarangForm" action="{{ route('pengadaan.terima', ['idpengadaan' => $pengadaanData->idpengadaan]) }}" method="POST" class="mt-3">
-            @csrf
-            <input type="hidden" name="idpengadaan" value="{{ $pengadaanData->idpengadaan }}">
-            <input type="hidden" name="iduser" value="{{ $pengadaanData->iduser }}">
+        <!-- Form untuk menerima barang, hanya tampil jika status pengadaan A -->
+        @if($pengadaanData->status == 'A')
+            <form id="terimaBarangForm" action="{{ route('pengadaan.terima', ['idpengadaan' => $pengadaanData->idpengadaan]) }}" method="POST" class="mt-3">
+                @csrf
+                <input type="hidden" name="idpengadaan" value="{{ $pengadaanData->idpengadaan }}">
+                <input type="hidden" name="iduser" value="{{ $pengadaanData->user_iduser }}">
 
-            <div class="mb-3">
-                <button type="submit" class="btn btn-success">Terima Barang</button>
-            </div>
-        </form>
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-success">Terima Barang</button>
+                </div>
+            </form>
+        @else
+            <p><strong>Pengadaan ini telah selesai dan barang tidak dapat diterima lagi.</strong></p>
+        @endif
 
         <!-- Menampilkan response dari server -->
         <div id="responseMessage" class="mt-3"></div>

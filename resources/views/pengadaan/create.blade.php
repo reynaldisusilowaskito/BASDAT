@@ -181,8 +181,7 @@
                             <td id="subtotal-${item.id_barang}">${item.subtotal.toLocaleString('id-ID')}</td>
                             <td>
                                 <button class="btn btn-danger" onclick="hapusBarang('${item.id_barang}')">Hapus</button>
-                                <button class="btn btn-success mt-2" onclick="terimaBarang('${item.id_barang}')">Terima</button>
-                                <button class="btn btn-warning mt-2" onclick="tolakBarang('${item.id_barang}')">Tolak</button>
+                
                             </td>
                             <td>
                                 <span class="badge badge-info">${statusLabel}</span>

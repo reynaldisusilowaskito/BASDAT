@@ -19,14 +19,31 @@
                     <td>{{ $penerimaan->idpenerimaan }}</td>
                     <td>{{ $penerimaan->iduser }}</td>
                     <td>{{ $penerimaan->idpengadaan }}</td>
-                    {{-- <td>{{ $penerimaan->pengadaan_status }}</td> --}}
+
+                    {{-- Menampilkan status sesuai dengan kondisi --}}
                     <td>
-                        <a href="{{ route('penerimaan.show', $penerimaan->idpenerimaan) }}" class="btn btn-info btn-sm">Detail</a>
-                        <form action="{{ route('penerimaan.destroy', $penerimaan->idpenerimaan) }}" method="POST" style="display:inline;">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Apakah Anda Ingin Returr Barang Ini?')">Retur</button>
-                        </form>
+                        @if($penerimaan->status == 'A')
+                            Diterima
+                        @elseif($penerimaan->status == 'B')
+                            Telah Direturn
+                        @else
+                            Status Tidak Dikenal
+                        @endif
+                    </td>
+
+                    {{-- Aksi: Tampilkan tombol Return hanya jika status penerimaan adalah A --}}
+                    <td>
+                        @if($penerimaan->status == 'A')
+                            <a href="{{ route('penerimaan.show', $penerimaan->idpenerimaan) }}" class="btn btn-info btn-sm">Detail</a>
+                            <form action="{{ route('penerimaan.destroy', $penerimaan->idpenerimaan) }}" method="POST" style="display:inline;">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Apakah Anda Ingin Returr Barang Ini?')">Retur</button>
+                            </form>
+                        @else
+                            <!-- Jika status sudah B, tidak tampilkan tombol return -->
+                            <span class="btn btn-secondary btn-sm" disabled>Retur Tidak Tersedia</span>
+                        @endif
                     </td>
                 </tr>
             @endforeach

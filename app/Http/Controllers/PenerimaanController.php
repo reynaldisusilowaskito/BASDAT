@@ -95,7 +95,12 @@ class PenerimaanController extends Controller
                 ]);
             }
 
-    
+            // Update status penerimaan menjadi 'B' setelah retur
+            DB::table('penerimaan')
+                ->where('idpenerimaan', $idpenerimaan)
+                ->update([
+                    'status' => 'B', // Status 'B' berarti telah direturn
+                ]);
 
             // Commit transaksi jika semua query berhasil
             DB::commit();
