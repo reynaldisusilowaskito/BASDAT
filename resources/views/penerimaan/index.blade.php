@@ -22,7 +22,6 @@
                     {{-- <td>{{ $penerimaan->pengadaan_status }}</td> --}}
                     <td>
                         <a href="{{ route('penerimaan.show', $penerimaan->idpenerimaan) }}" class="btn btn-info btn-sm">Detail</a>
-                        <a href="{{ route('penerimaan.edit', $penerimaan->idpenerimaan) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form action="{{ route('penerimaan.destroy', $penerimaan->idpenerimaan) }}" method="POST" style="display:inline;">
                             @csrf
                             @method('DELETE')

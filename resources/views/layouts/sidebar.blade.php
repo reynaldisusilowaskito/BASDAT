@@ -7,6 +7,7 @@
     <a href="{{ url('/pengadaan') }}" class="list-group-item list-group-item-action">Pengadaan</a>
     <a href="{{ url('/penerimaan') }}" class="list-group-item list-group-item-action">Penerimaan</a>
     <a href="{{ url('/retur') }}" class="list-group-item list-group-item-action">retur</a>
-    <a href="{{ url('/retur') }}" class="list-group-item list-group-item-action">penjualan</a>
-    <a href="{{ url('/retur') }}" class="list-group-item list-group-item-action">stok</a>
+    <a href="{{ url('/penjualan') }}" class="list-group-item list-group-item-action">penjualan</a>
+    <a href="{{ url('/stock') }}" class="list-group-item list-group-item-action">stok</a>
+    <a href="{{ url('/margin-penjualan') }}" class="list-group-item list-group-item-action">margin</a>
 </div>

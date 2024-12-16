@@ -20,7 +20,7 @@
                 <tr>
                     <td>{{ $item->iddetail_penerimaan }}</td>
                     <td>{{ $item->idpenerimaan }}</td>
-                    <td>{{ $item->barang_idbarang }}</td>
+                    <td>{{ $item->idbarang }}</td>
                     <td>{{ $item->jumlah_terima }}</td>
                     <td>{{ number_format($item->harga_satuan_terima, 2) }}</td>
                     <td>{{ number_format($item->sub_total_terima, 2) }}</td>

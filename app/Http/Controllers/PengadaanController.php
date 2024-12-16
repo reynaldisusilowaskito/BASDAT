@@ -33,22 +33,67 @@ class PengadaanController extends Controller
         return view('pengadaan.create', compact('barang', 'users', 'vendors', 'pengadaan'));
     }
 
-    public function store($idpengadaan, $iduser)
+    public function store(Request $request)
     {
-        // Proses penerimaan barang
-        Log::info('Proses penerimaan barang untuk ID Pengadaan: ' . $idpengadaan . ' dan ID User: ' . $iduser);
+        // Log data dari request
+        Log::info('Proses pembuatan pengadaan barang: ' . json_encode($request->all()));
 
-        // Menyimpan penerimaan barang atau mengupdate status pengadaan
-        // Contoh: Update status pengadaan
-        DB::table('pengadaan')
-            ->where('idpengadaan', $idpengadaan)
-            ->update(['status' => 'Diterima', 'iduser' => $iduser]);
+        try {
+            // Memulai transaksi
+            DB::beginTransaction();
 
-        // Return response
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Barang berhasil diterima',
-        ]);
+            // Ambil data dari request
+            $iduser = $request->input('id_user');
+            $idvendor = $request->input('id_vendor');
+            $subtotal = $request->input('subtotal');
+            $ppn = $request->input('ppn', 0); // Default 0 jika PPN tidak dikirim
+            $total = $subtotal + $ppn; // Hitung total nilai
+            $status = 'Menunggu'; // Status awal pengadaan
+
+            // Masukkan data ke tabel pengadaan
+            $idpengadaan = DB::table('pengadaan')->insertGetId([
+                'user_iduser' => $iduser,
+                'vendor_idvendor' => $idvendor,
+                'status' => 'A',
+                'subtotal_nilai' => $subtotal,
+                'ppn' => $ppn,
+                'total_nilai' => $total,
+                'timestamp' => now(), // Otomatis menggunakan waktu saat ini
+            ]);
+
+            // Masukkan data ke tabel detail_pengadaan
+            $barangDetails = $request->input('barang'); // Ambil array barang
+            foreach ($barangDetails as $barang) {
+                DB::table('detail_pengadaan')->insert([
+                    'idpengadaan' => $idpengadaan,
+                    'idbarang' => $barang['id_barang'],
+                    'harga_satuan' => $barang['harga'],
+                    'jumlah' => $barang['quantity'],
+                    'sub_total' => $barang['subtotal'],
+                ]);
+            }
+
+            // Commit transaksi jika semua berhasil
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Pengadaan berhasil disimpan',
+                'id_pengadaan' => $idpengadaan,
+            ]);
+        } catch (\Exception $e) {
+            // Rollback jika ada error
+            DB::rollBack();
+
+            Log::error('Error saat menyimpan pengadaan barang: ' . $e->getMessage());
+            return response()->json(
+                [
+                    'status' => 'error',
+                    'message' => 'Terjadi kesalahan saat menyimpan pengadaan barang',
+                ],
+                500,
+            );
+        }
     }
 
     // Menampilkan form edit pengadaan
@@ -66,25 +111,13 @@ class PengadaanController extends Controller
         $users = DB::table('user')->get();
 
         // Ambil detail pengadaan
-        $detailPengadaan = DB::table('detail_pengadaan')
-            ->join('barang', 'detail_pengadaan.idbarang', '=', 'barang.idbarang')
-            ->join('satuan', 'barang.idsatuan', '=', 'satuan.idsatuan')
-            ->where('detail_pengadaan.idpengadaan', $id)
-            ->select(
-                'detail_pengadaan.*',
-                'barang.nama AS barang_nama',
-                'barang.harga AS barang_harga',
-                'satuan.nama_satuan'
-            )
-            ->get();
+        $detailPengadaan = DB::table('detail_pengadaan')->join('barang', 'detail_pengadaan.idbarang', '=', 'barang.idbarang')->join('satuan', 'barang.idsatuan', '=', 'satuan.idsatuan')->where('detail_pengadaan.idpengadaan', $id)->select('detail_pengadaan.*', 'barang.nama AS barang_nama', 'barang.harga AS barang_harga', 'satuan.nama_satuan')->get();
 
         // Ambil daftar barang untuk dropdown
         $barangList = DB::table('barang')->get();
 
         return view('pengadaan.edit', compact('pengadaan', 'vendors', 'users', 'detailPengadaan', 'barangList'));
     }
-
-
 
     // Mengupdate data pengadaan
     public function update(Request $request, $id)
@@ -105,9 +138,11 @@ class PengadaanController extends Controller
 
         try {
             // Update data pengadaan utama
-            DB::table('pengadaan')->where('idpengadaan', $id)->update([
-                'status' => $validated['status'],
-            ]);
+            DB::table('pengadaan')
+                ->where('idpengadaan', $id)
+                ->update([
+                    'status' => $validated['status'],
+                ]);
 
             // Update detail pengadaan
             foreach ($validated['detail_pengadaan'] as $detail) {
@@ -126,11 +161,11 @@ class PengadaanController extends Controller
             return redirect()->route('pengadaan.index')->with('success', 'Pengadaan berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->route('pengadaan.index')->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return redirect()
+                ->route('pengadaan.index')
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
-
-
 
     // Menghapus pengadaan
     public function destroy($id)
@@ -154,63 +189,45 @@ class PengadaanController extends Controller
             return redirect()->route('pengadaan.index')->with('success', 'Pengadaan berhasil dihapus.');
         } catch (\Exception $e) {
             // Tangani kesalahan dan tampilkan pesan error
-            return redirect()->route('pengadaan.index')->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return redirect()
+                ->route('pengadaan.index')
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
-
-
 
     // Menampilkan detail pengadaan
     public function show($id)
     {
         // Ambil pengadaan dengan join user dan vendor
-        $pengadaan = DB::table('pengadaan')
-            ->join('user', 'pengadaan.user_iduser', '=', 'user.iduser')
-            ->join('vendor', 'pengadaan.vendor_idvendor', '=', 'vendor.idvendor')
-            ->select('pengadaan.*', 'user.username', 'vendor.nama_vendor')
-            ->where('pengadaan.idpengadaan', $id)
-            ->first();
+        $pengadaan = DB::table('pengadaan')->join('user', 'pengadaan.user_iduser', '=', 'user.iduser')->join('vendor', 'pengadaan.vendor_idvendor', '=', 'vendor.idvendor')->select('pengadaan.*', 'user.username', 'vendor.nama_vendor')->where('pengadaan.idpengadaan', $id)->first();
 
         // Ambil detail pengadaan berdasarkan idpengadaan
-        $detailPengadaan = DB::table('detail_pengadaan')
-            ->join('barang', 'detail_pengadaan.idbarang', '=', 'barang.idbarang')
-            ->join('satuan', 'detail_pengadaan.idsatuan', '=', 'satuan.idsatuan')
-            ->select('detail_pengadaan.*', 'barang.nama AS barang_nama', 'satuan.nama AS nama_satuan')
-            ->where('detail_pengadaan.pengadaan_id', $id)
-            ->get();
+        $detailPengadaan = DB::table('detail_pengadaan')->join('barang', 'detail_pengadaan.idbarang', '=', 'barang.idbarang')->join('satuan', 'detail_pengadaan.idsatuan', '=', 'satuan.idsatuan')->select('detail_pengadaan.*', 'barang.nama AS barang_nama', 'satuan.nama AS nama_satuan')->where('detail_pengadaan.pengadaan_id', $id)->get();
 
         // Kirim data pengadaan dan detail pengadaan ke view
         return view('pengadaan.show', compact('pengadaan', 'detailPengadaan'));
     }
 
-
     // Menampilkan detail pengadaan beserta barang
     public function showDetail($id)
     {
-        // Ambil data dari view 'pengadaan_view'
-        $pengadaan = DB::table('pengadaan_view')
-            ->where('idpengadaan', $id)
-            ->get(); // Mengambil data sebagai collection
+        // Mengambil data pengadaan dari tabel pengadaan
+        $pengadaanData = DB::table('pengadaan')->join('vendor', 'pengadaan.vendor_idvendor', '=', 'vendor.idvendor')->join('user', 'pengadaan.user_iduser', '=', 'user.iduser')->where('pengadaan.idpengadaan', $id)->first(); // Ambil data pengadaan pertama (karena hanya satu yang sesuai dengan idpengadaan)
+
+        // Mengambil data detail pengadaan
+        $detailPengadaan = DB::table('detail_pengadaan')->join('barang', 'detail_pengadaan.idbarang', '=', 'barang.idbarang')->join('satuan', 'barang.idsatuan', '=', 'satuan.idsatuan')->where('detail_pengadaan.idpengadaan', $id)->get(); // Ambil semua detail pengadaan yang sesuai dengan idpengadaan
 
         // Cek jika data pengadaan ditemukan
-        if ($pengadaan->isEmpty()) {
+        if (!$pengadaanData) {
             return redirect()->route('pengadaan.index')->with('error', 'Pengadaan tidak ditemukan');
         }
-
-        // Ambil data pengadaan pertama
-        $pengadaanData = $pengadaan->first();
-        $detailPengadaan = $pengadaan->whereNotNull('iddetail_pengadaan'); // Ambil data detail pengadaan
 
         return view('pengadaan.detail', compact('pengadaanData', 'detailPengadaan'));
     }
 
     public function penerimaan()
     {
-        $pengadaans = DB::table('pengadaan')
-            ->join('user', 'pengadaan.user_id', '=', 'user.iduser')
-            ->join('vendor', 'pengadaan.vendor_idvendor', '=', 'vendor.idvendor')
-            ->select('pengadaan.*', 'user.username as user_name', 'vendor.nama_vendor')
-            ->get();
+        $pengadaans = DB::table('pengadaan')->join('user', 'pengadaan.user_id', '=', 'user.iduser')->join('vendor', 'pengadaan.vendor_idvendor', '=', 'vendor.idvendor')->select('pengadaan.*', 'user.username as user_name', 'vendor.nama_vendor')->get();
 
         return view('pengadaan.penerimaan', compact('pengadaans'));
     }
@@ -226,13 +243,17 @@ class PengadaanController extends Controller
             }
 
             // Update status pengadaan menjadi "Tolak" (misalnya, 1)
-            DB::table('pengadaan')->where('idpengadaan', $id)->update([
-                'status_pengadaan' => 1, // Status "Tolak"
-            ]);
+            DB::table('pengadaan')
+                ->where('idpengadaan', $id)
+                ->update([
+                    'status_pengadaan' => 1, // Status "Tolak"
+                ]);
 
             return redirect()->route('pengadaan.index')->with('success', 'Pengadaan telah ditolak.');
         } catch (\Exception $e) {
-            return redirect()->route('pengadaan.index')->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return redirect()
+                ->route('pengadaan.index')
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
@@ -240,6 +261,8 @@ class PengadaanController extends Controller
 
     public function terima(Request $request)
     {
+        Log::info('Proses penerimaan: ' . json_encode($request->all()));
+
         // Ambil data yang dikirim dari form
         $idpengadaan = $request->idpengadaan;
         $iduser = $request->iduser;
@@ -252,10 +275,9 @@ class PengadaanController extends Controller
 
             // Insert data penerimaan baru ke tabel penerimaan
             $result = DB::insert(
-                '
-                INSERT INTO penerimaan (status, idpengadaan, iduser) 
-                VALUES (?, ?, ?)',
-                [$statusPenerimaan, $idpengadaan, $iduser]
+                'INSERT INTO penerimaan (status, idpengadaan, iduser,created_at)
+             VALUES (?, ?, ?, ?)',
+                [$statusPenerimaan, $idpengadaan, $iduser ,now()],
             );
 
             // Ambil idpenerimaan yang baru dibuat
@@ -263,27 +285,19 @@ class PengadaanController extends Controller
 
             // Ambil semua detail pengadaan untuk idpengadaan tertentu
             $detailPengadaan = DB::select(
-                '
-                SELECT dp.iddetail_pengadaan, dp.idbarang, dp.harga_satuan, dp.jumlah, dp.sub_total 
-                FROM detail_pengadaan dp 
-                WHERE dp.idpengadaan = ?',
-                [$idpengadaan]
+                'SELECT dp.iddetail_pengadaan, dp.idbarang, dp.harga_satuan, dp.jumlah, dp.sub_total
+             FROM detail_pengadaan dp
+             WHERE dp.idpengadaan = ?',
+                [$idpengadaan],
             );
 
             // Proses memasukkan data ke detail penerimaan
             foreach ($detailPengadaan as $detail) {
                 // Insert detail penerimaan untuk setiap barang
                 DB::insert(
-                    '
-                    INSERT INTO detail_penerimaan (idpenerimaan, barang_idbarang, jumlah_terima, harga_satuan_terima, sub_total_terima) 
-                    VALUES (?, ?, ?, ?, ?)',
-                    [
-                        $idPenerimaan,
-                        $detail->idbarang,
-                        $detail->jumlah,
-                        $detail->harga_satuan,
-                        $detail->sub_total
-                    ]
+                    'INSERT INTO detail_penerimaan (idpenerimaan, idbarang, jumlah_terima, harga_satuan_terima, sub_total_terima)
+                 VALUES (?, ?, ?, ?, ?)',
+                    [$idPenerimaan, $detail->idbarang, $detail->jumlah, $detail->harga_satuan, $detail->sub_total],
                 );
             }
 
@@ -291,21 +305,30 @@ class PengadaanController extends Controller
             DB::commit();
 
             // Kembalikan respon sukses
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Penerimaan berhasil ditambahkan.',
-                'idpenerimaan' => $idPenerimaan
-            ], 200);
+            return response()->json(
+                [
+                    'status' => 'success',
+                    'message' => 'Penerimaan berhasil ditambahkan.',
+                    'idpenerimaan' => $idPenerimaan,
+                ],
+                200,
+            );
         } catch (\Exception $e) {
             // Rollback transaksi jika terjadi error
             DB::rollBack();
 
+            // Log error untuk debugging
+            Log::error('Error penerimaan: ' . $e->getMessage());
+
             // Kembalikan respon error
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Terjadi kesalahan saat menambahkan penerimaan.',
-                'error' => $e->getMessage(),
-            ], 500);
+            return response()->json(
+                [
+                    'status' => 'error',
+                    'message' => 'Terjadi kesalahan saat menambahkan penerimaan.',
+                    'error' => $e->getMessage(),
+                ],
+                500,
+            );
         }
     }
 }

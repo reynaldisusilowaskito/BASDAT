@@ -6,9 +6,13 @@ use App\Http\Controllers\VendorController;
 use App\Http\Controllers\SatuanController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ReturController;
 use App\Http\Controllers\PengadaanController;
 use App\Http\Controllers\PenerimaanController;
+use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\DetailPengadaanController;
+use App\Http\Controllers\MarginPenjualanController;
+use App\Http\Controllers\KartuStokController;
 // use App\Http\Controllers\ReturController;
 
 
@@ -85,8 +89,23 @@ Route::delete('penerimaan/{idpenerimaan}', [PenerimaanController::class, 'destro
 //detail penerimaan
 Route::get('/penerimaan/{id}/detail', [PenerimaanController::class, 'detail'])->name('penerimaan.detail');
 
+Route::get('/retur', [ReturController::class, 'index'])->name('retur.index');
+Route::get('/retur/{id}', [ReturController::class, 'show'])->name('retur.show');
+
+Route::get('/penjualan', [PenjualanController::class, 'index'])->name('penjualan.index');
+Route::post('/penjualan', [PenjualanController::class, 'store'])->name('penjualan.store');
+Route::get('/penjualan/create', [PenjualanController::class, 'create'])->name('penjualan.create');
+Route::post('/penjualan/{id}', [PenjualanController::class, 'show'])->name('penjualan.detail');
+
+Route::get('/stock', [KartuStokController::class, 'index'])->name('stock.index');
 
 
+Route::get('/margin-penjualan', [MarginPenjualanController::class, 'index'])->name('margin-penjualan.index');
+Route::get('/margin-penjualan/create', [MarginPenjualanController::class, 'create'])->name('margin-penjualan.create');
+Route::post('/margin-penjualan', [MarginPenjualanController::class, 'store'])->name('margin-penjualan.store');
+Route::get('/margin-penjualan/{id}/edit', [MarginPenjualanController::class, 'edit'])->name('margin-penjualan.edit');
+Route::put('/margin-penjualan/{id}', [MarginPenjualanController::class, 'update'])->name('margin-penjualan.update');
+Route::delete('/margin-penjualan/{id}', [MarginPenjualanController::class, 'destroy'])->name('margin-penjualan.destroy');
 
 
 

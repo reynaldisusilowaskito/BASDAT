@@ -6,13 +6,21 @@ use App\Models\User;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
     // Menampilkan daftar user
     public function index()
     {
-        $users = User::with('role')->get(); // Mengambil data user beserta role
+        $users = DB::select("
+    SELECT user.iduser, user.username, user.email, user.status, user.created_at, user.updated_at, role.nama_role
+    FROM user
+    LEFT JOIN role ON user.idrole = role.idrole
+");
+
+        
+
         return view('user.index', compact('users'));
     }
 

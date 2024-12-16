@@ -16,7 +16,7 @@
             @foreach($users as $user)
             <tr>
                 <td>{{ $user->username }}</td>
-                <td>{{ $user->role->nama_role }}</td> <!-- Menampilkan nama role -->
+                <td>{{ $user->nama_role }}</td> <!-- Menampilkan nama role -->
                 <td>
                     <a href="{{ route('user.edit', $user->iduser) }}" class="btn btn-warning">Edit</a>
                     <form action="{{ route('user.destroy', $user->iduser) }}" method="POST" style="display:inline-block;">

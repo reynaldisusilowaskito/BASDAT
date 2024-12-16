@@ -26,9 +26,9 @@
                         <tbody>
                             @foreach ($detailPengadaan as $detail)
                                 <tr>
-                                    <td>{{ $detail->barang_nama }}</td>
+                                    <td>{{ $detail->nama }}</td>
                                     <td>{{ $detail->nama_satuan }}</td>
-                                    <td>{{ number_format($detail->barang_harga, 0, ',', '.') }}</td>
+                                    <td>{{ number_format($detail->harga, 0, ',', '.') }}</td>
                                     <td>{{ $detail->jumlah }}</td>
                                     <td>{{ number_format($detail->sub_total, 0, ',', '.') }}</td>
                                 </tr>
